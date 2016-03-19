@@ -30,6 +30,18 @@ let get_line_points (x1,y1) (x2,y2) =
 *)
 
 let () =
+  let file = In_channel.create "african_head.obj" in
+  let input = In_channel.input_all file in
+  let model = Model.parse_model input in
+  let (v,t,n,f) = model in
+  print_endline ("v0 :" ^ (Model.show_vertex (List.hd_exn v)));
+  print_endline ("vt0 :" ^ (Model.show_t_vertex (List.hd_exn t)));
+  print_endline ("vn0 :" ^ (Model.show_n_vertex (List.hd_exn n)));
+
+
+
+  (*
+
   let points = get_line_points (100,100) (400,400) in
   let points' = get_line_points (130,100) (333, 200) in
   let c = Canvas.create_canvas 500 500 in
@@ -38,3 +50,4 @@ let () =
   Canvas.draw_list c points' (255,0,0);
   Canvas.render_canvas c "test.bmp"
 
+  *)
