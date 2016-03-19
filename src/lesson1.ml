@@ -29,25 +29,52 @@ let get_line_points (x1,y1) (x2,y2) =
    simplify the math, so they're nice to have.
 *)
 
+let get_v_indices_from_face face =
+  Array.map face ~f:(fun (v,_,_) -> v)
+
+(* draws a line from each vertex to the next *)
+let get_lines_from_vertices vs =
+  Array.mapi vs ~f:(fun i v ->
+      let v2 =
+        if i > 0 then
+          vs.(i-1)
+        else
+          Array.nget vs (-1)
+      in
+      let (x1,y1,_,_) = v in
+      let (x2,y2,_,_) = v2 in
+      let x1 = 450. +. (x1 *. 400.) in
+      let y1 = 450. +. (y1 *. 400.) in
+      let x2 = 450. +. (x2 *. 400.) in
+      let y2 = 450. +. (y2 *. 400.) in
+      let (x1,y1) = point_i_of_f (x1,y1) in
+      let (x2,y2) = point_i_of_f (x2,y2) in
+      get_line_points (x1,y1) (x2,y2))
+
+(* TODO: i need to look through the for-loop in the lesson and find
+   out what exactly is being done, because my render looks nothing like
+   that...
+
+   also, there is something wrong with either my .obj parser or the
+   way i save the data, or just the way i read it... needs more work. *)
+
 let () =
   let file = In_channel.create "african_head.obj" in
   let input = In_channel.input_all file in
   let model = Model.parse_model input in
   let (v,t,n,f) = model in
-  print_endline ("v0 :" ^ (Model.show_vertex (List.hd_exn v)));
-  print_endline ("vt0 :" ^ (Model.show_t_vertex (List.hd_exn t)));
-  print_endline ("vn0 :" ^ (Model.show_n_vertex (List.hd_exn n)));
 
+  let c = Canvas.create_canvas 900 900 in
 
-
-  (*
-
-  let points = get_line_points (100,100) (400,400) in
-  let points' = get_line_points (130,100) (333, 200) in
-  let c = Canvas.create_canvas 500 500 in
-
-  Canvas.draw_list c points (255,255,255);
-  Canvas.draw_list c points' (255,0,0);
+  List.iter f
+    ~f:(fun f' ->
+        let vi = get_v_indices_from_face f' in
+        let vs = Array.map vi ~f:(fun i ->
+            match (List.nth v i) with
+            | Some v' -> v'
+            | None -> (0.,0.,0.,0.))
+        in
+        let l = get_lines_from_vertices vs in
+        Array.iter l ~f:(fun v' -> Canvas.draw_list c v' (255,255,255)))
+    ;
   Canvas.render_canvas c "test.bmp"
-
-  *)
