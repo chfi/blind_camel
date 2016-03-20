@@ -1,5 +1,6 @@
 open Core.Std
 
+(* TODO: make these records instead; p1.x would be easier than fst p1 *)
 type point_f = (float * float)
 type point_i = (int * int)
 
