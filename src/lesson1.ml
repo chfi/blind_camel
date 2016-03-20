@@ -51,12 +51,6 @@ let get_lines_from_vertices vs =
       let (x2,y2) = point_i_of_f (x2,y2) in
       get_line_points (x1,y1) (x2,y2))
 
-(* TODO: i need to look through the for-loop in the lesson and find
-   out what exactly is being done, because my render looks nothing like
-   that...
-
-   also, there is something wrong with either my .obj parser or the
-   way i save the data, or just the way i read it... needs more work. *)
 
 let () =
   let file = In_channel.create "african_head.obj" in
@@ -70,9 +64,11 @@ let () =
     ~f:(fun f' ->
         let vi = get_v_indices_from_face f' in
         let vs = Array.map vi ~f:(fun i ->
-            match (List.nth v i) with
+            match (List.nth v (i-1)) with
             | Some v' -> v'
-            | None -> (0.,0.,0.,0.))
+            | None -> raise (Failure ("Error: could not find vertex " ^
+                             (string_of_int i)))
+          )
         in
         let l = get_lines_from_vertices vs in
         Array.iter l ~f:(fun v' -> Canvas.draw_list c v' (255,255,255)))
