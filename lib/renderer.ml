@@ -1,7 +1,7 @@
 open Core.Std
 
 type point_f = (float * float)
-type point_i = (float * float)
+type point_i = (int * int)
 
 let point_f_of_i (x,y) = ((float_of_int x),(float_of_int y))
 let point_i_of_f (x,y) = (int_of_float (Float.round x),
@@ -21,17 +21,9 @@ let get_line_points (x1,y1) (x2,y2) =
   in
   points
 
-(*
-   TODO: write code to simplify transition between floats and ints;
-   use floats everywhere except on the canvas side, i.e., convert from
-   floats to int in set_canvas_pixel, maybe? floats will likely
-   simplify the math, so they're nice to have.
-*)
-
-let get_v_indices_from_face face =
-  Array.map face ~f:(fun (v,_,_) -> v)
 
 (* draws a line from each vertex to the next *)
+(* TODO: fix the hardcoded sizes *)
 let get_lines_from_vertices vs =
   Array.mapi vs ~f:(fun i v ->
       let v2 =
@@ -50,13 +42,14 @@ let get_lines_from_vertices vs =
       let (x2,y2) = point_i_of_f (x2,y2) in
       get_line_points (x1,y1) (x2,y2))
 
+
 let get_wireframe_lines v f =
   List.concat
     (Array.to_list
         (Array.concat
            (List.map f
               ~f:(fun f' ->
-                  let vi = get_v_indices_from_face f' in
+                  let vi = Model.get_v_indices_from_face f' in
                   let vs = Array.map vi ~f:(fun i ->
                       match (List.nth v (i-1)) with
                       | Some v' -> v'
@@ -66,14 +59,3 @@ let get_wireframe_lines v f =
                   in
                   get_lines_from_vertices vs
                 ))))
-
-let () =
-  let file = In_channel.create "african_head.obj" in
-  let input = In_channel.input_all file in
-  let model = Model.parse_model input in
-  let (v,t,n,f) = model in
-
-  let c = Canvas.create_canvas 900 900 in
-  let l = Renderer.get_wireframe_lines v f in
-  Canvas.draw_list c l (255,255,255);
-  Canvas.render_canvas c "test.bmp"

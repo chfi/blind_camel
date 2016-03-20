@@ -13,3 +13,5 @@ val show_t_vertex : texture_vertex -> string
 
 val show_n_vertex : normal_vertex -> string
 
+
+val get_v_indices_from_face : face -> int array

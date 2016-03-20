@@ -101,3 +101,5 @@ let show_n_vertex (x,y,z) =
   (string_of_float y) ^ ", " ^
   (string_of_float z) ^ ")"
 
+let get_v_indices_from_face face =
+  Array.map face ~f:(fun (v,_,_) -> v)
