@@ -76,26 +76,81 @@ let get_filled_triangle p1 p2 p3 =
        ))
 
 
-let () =
-  (* let file = In_channel.create "african_head.obj" in *)
-  (* let input = In_channel.input_all file in *)
-  (* let model = Model.parse_model input in *)
-  (* let (v,t,n,f) = model in *)
+(* assume we get a triangle, i.e. three vertices *)
+let get_triangles_from_vertices vs =
+  let module R = Renderer in
+  let v1 = vs.(0) in
+  let v2 = vs.(1) in
+  let v3 = vs.(2) in
 
-  let t1 = get_filled_triangle (400, 200) (700, 120) (500, 400) in
-  let t1' = get_triangle_points (400, 200) (700, 120) (500, 400) in
-  let t2 = get_filled_triangle (300, 200) (50, 620) (100, 140) in
-  let t2' = get_triangle_points (300, 200) (50, 620) (100, 140) in
-  let t3 = get_filled_triangle (100, 700) (800, 860) (300, 550) in
-  let t3' = get_triangle_points (100, 700) (800, 860) (300, 550) in
+  let (x1,y1,_,_) = v1 in
+  let (x2,y2,_,_) = v2 in
+  let (x3,y3,_,_) = v3 in
+
+  let offset = 450. in
+  let mult = 400. in
+
+  let x1 = offset +. (x1 *. mult) in
+  let y1 = offset +. (y1 *. mult) in
+  let x2 = offset +. (x2 *. mult) in
+  let y2 = offset +. (y2 *. mult) in
+  let x3 = offset +. (x3 *. mult) in
+  let y3 = offset +. (y3 *. mult) in
+
+  let p1 = R.point_i_of_f (x1,y1) in
+  let p2 = R.point_i_of_f (x2,y2) in
+  let p3 = R.point_i_of_f (x3,y3) in
+  [|get_filled_triangle p1 p2 p3|]
+
+(*
+  Array.mapi vs ~f:(fun i v ->
+      let v2 =
+        if i > 0 then
+          vs.(i-1)
+        else
+          Array.nget vs (-1)
+      in
+      let (x1,y1,_,_) = v in
+      let (x2,y2,_,_) = v2 in
+      let x1 = 450. +. (x1 *. 400.) in
+      let y1 = 450. +. (y1 *. 400.) in
+      let x2 = 450. +. (x2 *. 400.) in
+      let y2 = 450. +. (y2 *. 400.) in
+      let (x1,y1) = point_i_of_f (x1,y1) in
+      let (x2,y2) = point_i_of_f (x2,y2) in
+      get_line_points (x1,y1) (x2,y2))
+   *)
+
+let get_triangles_list v f =
+  Array.to_list
+  ((Array.concat
+     (List.map f
+        ~f:(fun f' ->
+            let vi = Model.get_v_indices_from_face f' in
+            let vs = Array.map vi ~f:(fun i ->
+                match (List.nth v (i-1)) with
+                | Some v' -> v'
+                | None -> raise (Failure ("Error: could not find vertex " ^
+                                          (string_of_int i)))
+              )
+            in
+            get_triangles_from_vertices vs
+          ))))
+
+
+
+let () =
+  let file = In_channel.create "african_head.obj" in
+  let input = In_channel.input_all file in
+  let model = Model.parse_model input in
+  let (v,t,n,f) = model in
+
+
+  let tl = get_triangles_list v f in
 
 
   let c = Canvas.create_canvas 900 900 in
-  (* let l = Renderer.get_wireframe_lines v f in *)
-  Canvas.draw_list c t1 (255,0,0);
-  Canvas.draw_list c t2 (0,255,0);
-  Canvas.draw_list c t3 (0,0,255);
-  Canvas.draw_list c t1' (255,255,255);
-  Canvas.draw_list c t2' (255,255,255);
-  Canvas.draw_list c t3' (255,255,255);
+  List.iter tl ~f:(fun t -> Canvas.draw_list c t
+                      (Random.int 255, Random.int 255, Random.int 255));
+
   Canvas.render_canvas c "test.bmp"
