@@ -1,5 +1,10 @@
 open Core.Std
 
+(* TODO: refactor the hell outta this *)
+(* TODO: Specifically, make it explicit when screen coordinates are used
+   and when world coordinates are used, and make it easier to translate
+   between them, using some sort of multiplier and offset *)
+
 
 let get_triangle_points p1 p2 p3 =
   let module R = Renderer in
@@ -13,10 +18,6 @@ let get_filled_triangle p1 p2 p3 =
   let [p1;p2;p3] = List.sort [p1;p2;p3]
       ~cmp:(fun (_,y1) (_,y2) -> compare y2 y1)
   in
-
-  (* print_endline ("p1.y. " ^ (string_of_int (snd p1))); *)
-  (* print_endline ("p2.y. " ^ (string_of_int (snd p2))); *)
-  (* print_endline ("p3.y. " ^ (string_of_int (snd p3))); *)
 
   let btm_i = p3 in
   let mid_i = p2 in
@@ -73,7 +74,9 @@ let get_filled_triangle p1 p2 p3 =
                                   (float_of_int y) +. (snd o_f)) in
 
         Renderer.get_line_points p1 p2
-       ))
+         (* for some reason the above leaves holes between triangles...
+            so we need to draw a "border" around this triangle as well *)
+       )) @ get_triangle_points p1 p2 p3
 
 
 (* assume we get a triangle, i.e. three vertices *)
@@ -102,28 +105,42 @@ let get_triangles_from_vertices vs =
   let p3 = R.point_i_of_f (x3,y3) in
   [|get_filled_triangle p1 p2 p3|]
 
-(*
-  Array.mapi vs ~f:(fun i v ->
-      let v2 =
-        if i > 0 then
-          vs.(i-1)
-        else
-          Array.nget vs (-1)
-      in
-      let (x1,y1,_,_) = v in
-      let (x2,y2,_,_) = v2 in
-      let x1 = 450. +. (x1 *. 400.) in
-      let y1 = 450. +. (y1 *. 400.) in
-      let x2 = 450. +. (x2 *. 400.) in
-      let y2 = 450. +. (y2 *. 400.) in
-      let (x1,y1) = point_i_of_f (x1,y1) in
-      let (x2,y2) = point_i_of_f (x2,y2) in
-      get_line_points (x1,y1) (x2,y2))
-   *)
+
+let cross_product (ux,uy,uz) (vx,vy,vz) =
+  let x = (uy *. vz) -. (uz *. vy) in
+  let y = (uz *. vx) -. (ux *. vz) in
+  let z = (ux *. vy) -. (uy *. vx) in
+  (x,y,z)
+
+let dot_product (ux,uy,uz) (vx,vy,vz) =
+  (ux*.vx) +. (uy*.vy) +. (uz*.vz)
+
+let length (ux,uy,uz) =
+  ((ux ** 2.) +. (uy ** 2.) +. (uz ** 2.)) ** 0.5
+
+let normalize (ux,uy,uz) =
+  let len = length (ux,uy,uz) in
+  let x = ux /. len in
+  let y = uy /. len in
+  let z = uz /. len in
+  (x,y,z)
+
+let get_triangle_lighting (x1,y1,z1,_) (x2,y2,z2,_) (x3,y3,z3,_) =
+  (* subtract two points from one of the points to get a pair of sides *)
+  let u = (x2-.x1,y2-.y1,z2-.z1) in
+  let v = (x3-.x1,y3-.y1,z3-.z1) in
+  (* calculate cross product of two of the triangle's sides,
+     which we can use to find the light intensity *)
+
+  let n = cross_product u v in
+  let n' = normalize n in
+  let light = (0.,0.,1.) in
+
+  let intensity = dot_product n' light in
+  intensity
 
 let get_triangles_list v f =
-  Array.to_list
-  ((Array.concat
+  let tris =
      (List.map f
         ~f:(fun f' ->
             let vi = Model.get_v_indices_from_face f' in
@@ -134,10 +151,16 @@ let get_triangles_list v f =
                                           (string_of_int i)))
               )
             in
-            get_triangles_from_vertices vs
-          ))))
+            let light = get_triangle_lighting vs.(0) vs.(1) vs.(2) in
+            (get_triangles_from_vertices vs, light)
+          ))
+  in
+  (List.map tris ~f:(fun (ar,l) ->
+      (List.concat (Array.to_list ar)),l))
 
-
+(* TODO: Clearly there's something wrong with the function I use to
+   find the normals to the triangles. Fix that, or use the normals from
+   the model. *)
 
 let () =
   let file = In_channel.create "african_head.obj" in
@@ -145,12 +168,13 @@ let () =
   let model = Model.parse_model input in
   let (v,t,n,f) = model in
 
-
   let tl = get_triangles_list v f in
 
-
   let c = Canvas.create_canvas 900 900 in
-  List.iter tl ~f:(fun t -> Canvas.draw_list c t
-                      (Random.int 255, Random.int 255, Random.int 255));
+
+  List.iter tl ~f:(fun (t,l) ->
+      let col = (int_of_float (255. *. l)) in
+      if l >= 0. then
+      Canvas.draw_list c t (col,col,col));
 
   Canvas.render_canvas c "test.bmp"
