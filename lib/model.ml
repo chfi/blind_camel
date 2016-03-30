@@ -1,4 +1,9 @@
 open Core.Std
+(* TODO: Rewrite, use more types, split into more modules if necessary *)
+
+(* TODO: this whole thing should be rewritten so that a face actually contains
+   vertices, instead of just indices to vertices. I mean, that'll be inefficient,
+   but w/e; it'll be nicer to work with. *)
 
 (* represents a model parsed from a wavefront .obj file *)
 
@@ -79,11 +84,10 @@ let parse_line line so_far =
 (* TODO: make this output an array, and make parse_line reverse the lists instead
    of appending to the end *)
 let parse_model file =
-  let lines = String.split_lines file in
+  String.split_lines file
   (* pop out empty lines and comments *)
-  let filtered = List.filter lines ~f:(fun l ->
-      (String.length l) > 0 && (l.[0] <> '#')) in
-  List.fold filtered ~init:([],[],[],[]) ~f:(fun acc line -> parse_line line acc)
+  |> List.filter ~f:(fun l -> (String.length l) > 0 && (l.[0] <> '#'))
+  |> List.fold ~init:([],[],[],[]) ~f:(fun acc line -> parse_line line acc)
 
 
 let show_vertex (x,y,z,w) =

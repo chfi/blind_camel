@@ -1,8 +1,12 @@
 open Core.Std
+(* TODO: Rewrite, use more types, split into more modules if necessary *)
 
 (* TODO: make these records instead; p1.x would be easier than fst p1 *)
 type point_f = (float * float)
 type point_i = (int * int)
+
+type world_coordinates = (float * float * float)
+type screen_coordinates = (int * int)
 
 let point_f_of_i (x,y) = ((float_of_int x),(float_of_int y))
 let point_i_of_f (x,y) = (int_of_float (Float.round x),
@@ -44,19 +48,16 @@ let get_lines_from_vertices vs =
       get_line_points (x1,y1) (x2,y2))
 
 
-let get_wireframe_lines v f =
-  List.concat
-    (Array.to_list
-        (Array.concat
-           (List.map f
-              ~f:(fun f' ->
-                  let vi = Model.get_v_indices_from_face f' in
-                  let vs = Array.map vi ~f:(fun i ->
-                      match (List.nth v (i-1)) with
-                      | Some v' -> v'
-                      | None -> raise (Failure ("Error: could not find vertex " ^
-                                                (string_of_int i)))
-                    )
-                  in
-                  get_lines_from_vertices vs
-                ))))
+let get_wireframe_lines vertices faces =
+  List.map faces ~f:(fun f' ->
+      Model.get_v_indices_from_face f'
+      |> Array.map ~f:(fun i ->
+          match (List.nth vertices (i-1)) with
+          | Some v' -> v'
+          | None ->
+            raise (Failure ("Error: could not find vertex " ^ (string_of_int i))))
+      |> get_lines_from_vertices)
+  |> Array.concat
+  |> Array.to_list
+  |> List.concat
+

@@ -5,7 +5,6 @@ open Core.Std
    and when world coordinates are used, and make it easier to translate
    between them, using some sort of multiplier and offset *)
 
-
 let get_triangle_points p1 p2 p3 =
   let module R = Renderer in
   List.concat
@@ -131,7 +130,6 @@ let get_triangle_lighting (x1,y1,z1,_) (x2,y2,z2,_) (x3,y3,z3,_) =
   let v = (x3-.x1,y3-.y1,z3-.z1) in
   (* calculate cross product of two of the triangle's sides,
      which we can use to find the light intensity *)
-
   let n = cross_product u v in
   let n' = normalize n in
   let light = (0.,0.,1.) in
@@ -157,10 +155,6 @@ let get_triangles_list v f =
   in
   (List.map tris ~f:(fun (ar,l) ->
       (List.concat (Array.to_list ar)),l))
-
-(* TODO: Clearly there's something wrong with the function I use to
-   find the normals to the triangles. Fix that, or use the normals from
-   the model. *)
 
 let () =
   let file = In_channel.create "african_head.obj" in
