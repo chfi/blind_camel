@@ -8,11 +8,103 @@ open Core.Std
 (* represents a model parsed from a wavefront .obj file *)
 
 (* lets start with just reading vertices *)
-type vertex = (float * float * float * float)
-type texture_vertex = (float * float * float)
-type normal_vertex = (float * float * float)
 
-type face = (int * int option * int option) array
+module Vertex = struct
+  type t = { x : float;
+             y : float;
+             z : float;
+             w : float; }
+
+  let of_tuple (x,y,z,w) =
+    let w = match w with
+      | Some w -> w
+      | None -> 1.
+    in
+    { x; y; z; w }
+end
+
+module Texture_coordinate = struct
+  type t = { u : float;
+             v : float;
+             w : float; }
+
+  let of_tuple (u,v,w) =
+    let w = match w with
+      | Some w -> w
+      | None -> 0.
+    in
+    { u; v; w }
+end
+
+module Vertex_normal = struct
+  type t = { x : float;
+             y : float;
+             z : float; }
+
+  let of_tuple (x,y,z) = { x; y; z }
+end
+
+module Face_indices = struct
+  type t = { vertex_indices : int list;
+             texture_indices : int list;
+             normal_indices : int list; }
+
+  let of_tuple_list l =
+    let vertex_indices = List.map l ~f:(fun (v,_,_) -> v) in
+    let texture_indices = List.filter_map l ~f:(fun (_,tc,_) -> tc) in
+    let normal_indices = List.filter_map l ~f:(fun (_,_,vn) -> vn) in
+    { vertex_indices; texture_indices; normal_indices }
+end
+
+module Face_vertices = struct
+  type t = { vertices : Vertex.t list;
+             texture_coordinates : Texture_coordinate.t list;
+             vertex_normals : Vertex_normal.t list; }
+
+  let of_indices indices v_list tv_list vn_list =
+    let vertices = List.map indices.Face_indices.vertex_indices
+        ~f:(fun i -> match List.nth v_list (i - 1) with
+            | Some v -> v
+            | None -> failwith ("Could not find vertex " ^ (string_of_int i))
+          )
+    in
+    let texture_coordinates = List.map indices.Face_indices.texture_indices
+        ~f:(fun i -> match List.nth tv_list (i - 1) with
+            | Some c -> c
+            | None -> failwith ("Could not find texture coordinates " ^
+                                (string_of_int i))
+          )
+    in
+    let vertex_normals = List.map indices.Face_indices.normal_indices
+        ~f:(fun i -> match List.nth vn_list (i - 1) with
+            | Some n -> n
+            | None -> failwith ("Could not find vertex normal " ^ (string_of_int i))
+          )
+    in
+
+    { vertices; texture_coordinates; vertex_normals }
+
+end
+
+
+
+let pair_of_list l =
+  let u = (List.nth_exn l 0) in
+  let v = (List.nth_exn l 1) in
+  (u,v)
+
+let triple_of_list l =
+  let x = (List.nth_exn l 0) in
+  let y = (List.nth_exn l 1) in
+  let z = (List.nth_exn l 2) in
+  (x,y,z)
+
+let quadruple_of_list l =
+  let u = (List.nth_exn l 0) in
+  let v = (List.nth_exn l 1) in
+  let w = (List.nth_exn l 2) in
+  let x = (List.nth_exn l 3) in
+  (u,v,w,x)
 
 (* todo deal with this better *)
 let f_pair_from_s_list l =
@@ -33,33 +125,48 @@ let f_quad_from_s_list l =
   let x = float_of_string (List.nth_exn l 3) in
   (u,v,w,x)
 
-let create_vertex words =
-  if (List.length words) = 4 then
-    f_quad_from_s_list words
-  else
-  let (x,y,z) = f_triple_from_s_list words in
-  (x,y,z,1.0)
+let vertex_of_words words =
+  match List.map words ~f:float_of_string with
+  | [] -> failwith "Attempted to parse vertex from empty list"
+  | [x; y; z] -> Vertex.of_tuple (x, y, z, None)
+  | [x; y; z; w] -> Vertex.of_tuple (x, y, z, Some w)
+  | _ -> failwith "Vertex entry contained incorrect number of coordinates"
 
-let create_t_vertex words =
-  if (List.length words) = 3 then
-    f_triple_from_s_list words
-  else
-    let (u,v) = f_pair_from_s_list words in
-    (u,v,0.0)
+let texture_coordinate_of_words words =
+  match List.map words ~f:float_of_string with
+  | [] -> failwith "Attempted to parse texture coordinate from empty list"
+  | [u; v] -> Texture_coordinate.of_tuple (u, v, None)
+  | [u; v; w] -> Texture_coordinate.of_tuple (u, v, Some w)
+  | _ -> failwith "Texture coordinate entry contained incorrect number of coordinates"
 
-let create_n_vertex words =
-  f_triple_from_s_list words
+let vertex_normal_of_words words =
+  match List.map words ~f:float_of_string with
+  | [] -> failwith "Attempted to parse vertex normal from empty list"
+  | [x; y; z] -> Vertex_normal.of_tuple (x, y, z)
+  | _ -> failwith "Vertex normal entry contained incorrect number of coordinates"
 
-let create_face words =
+
+let face_indices_of_words words =
   let parse_vertex word =
     let split = String.split ~on:'/' word in
-    let v = int_of_string (List.nth_exn split 0) in
-    let vt = Option.map (List.nth split 1) ~f:int_of_string in
-    let vn = Option.map (List.nth split 2) ~f:int_of_string in
-    (v,vt,vn)
+    (* let ints = List.map ~f:int_of_string split in *)
+    match split with
+    | [] -> failwith "Attempted to parse vertex index from empty list"
+    | [v] -> (v, None, None)
+    | [v;"";vn] -> (v, None, Some vn)
+    | [v;tc] -> (v, Some tc, None)
+    | [v;tc;vn] -> (v, Some tc, Some vn)
+    | _ -> failwith "Face entry incorrectly structured"
   in
-  let parsed = List.map words ~f:parse_vertex in
-  Array.of_list parsed
+
+  List.map words ~f:parse_vertex
+  |> List.map ~f:(fun (a,b,c) ->
+      (int_of_string a,
+       Option.map ~f:int_of_string b,
+       Option.map ~f:int_of_string c))
+  |> Face_indices.of_tuple_list
+
+
 
 (* TODO: deal with lines being of wrong length, i.e. having too few/too many entries *)
 
@@ -69,14 +176,14 @@ let parse_line line so_far =
   let words =
     (* and deal with any double-spaces (TODO: make this better.) *)
     List.filter ~f:(fun s -> s <> "") (
-    String.split_on_chars ~on:[' ';'\t'] line) in
+      String.split_on_chars ~on:[' ';'\t'] line) in
   let rest = List.slice words 1 0 in
   let result = match List.hd words with
     | None -> raise (Invalid_argument "Line empty!") (* TODO: handle this better *)
-    | Some "v" -> (vs @ [create_vertex rest], vts, vns, fs)
-    | Some "vt" -> (vs, vts @ [create_t_vertex rest], vns, fs)
-    | Some "vn" -> (vs, vts, vns @ [create_n_vertex rest], fs)
-    | Some "f" -> (vs, vts, vns, fs @ [create_face rest])
+    | Some "v" -> (vs @ [vertex_of_words rest], vts, vns, fs)
+    | Some "vt" -> (vs, vts @ [texture_coordinate_of_words rest], vns, fs)
+    | Some "vn" -> (vs, vts, vns @ [vertex_normal_of_words rest], fs)
+    | Some "f" -> (vs, vts, vns, fs @ [face_indices_of_words rest])
     | _ -> so_far
   in
   result
