@@ -1,13 +1,6 @@
 open Core.Std
-(* TODO: Rewrite, use more types, split into more modules if necessary *)
-
-(* TODO: this whole thing should be rewritten so that a face actually contains
-   vertices, instead of just indices to vertices. I mean, that'll be inefficient,
-   but w/e; it'll be nicer to work with. *)
 
 (* represents a model parsed from a wavefront .obj file *)
-
-(* lets start with just reading vertices *)
 
 module Vertex = struct
   type t = { x : float;
@@ -21,6 +14,8 @@ module Vertex = struct
       | None -> 1.
     in
     { x; y; z; w }
+
+  let to_tuple { x; y; z; w } = (x,y,z,w)
 end
 
 module Texture_coordinate = struct
@@ -34,6 +29,8 @@ module Texture_coordinate = struct
       | None -> 0.
     in
     { u; v; w }
+
+  let to_tuple { u; v; w } = (u,v,w)
 end
 
 module Vertex_normal = struct
@@ -42,6 +39,8 @@ module Vertex_normal = struct
              z : float; }
 
   let of_tuple (x,y,z) = { x; y; z }
+
+  let to_tuple { x; y; z } = (x,y,z)
 end
 
 module Face_indices = struct
@@ -87,44 +86,6 @@ module Face_vertices = struct
 end
 
 
-
-let pair_of_list l =
-  let u = (List.nth_exn l 0) in
-  let v = (List.nth_exn l 1) in
-  (u,v)
-
-let triple_of_list l =
-  let x = (List.nth_exn l 0) in
-  let y = (List.nth_exn l 1) in
-  let z = (List.nth_exn l 2) in
-  (x,y,z)
-
-let quadruple_of_list l =
-  let u = (List.nth_exn l 0) in
-  let v = (List.nth_exn l 1) in
-  let w = (List.nth_exn l 2) in
-  let x = (List.nth_exn l 3) in
-  (u,v,w,x)
-
-(* todo deal with this better *)
-let f_pair_from_s_list l =
-  let u = float_of_string (List.nth_exn l 0) in
-  let v = float_of_string (List.nth_exn l 1) in
-  (u,v)
-
-let f_triple_from_s_list l =
-  let x = float_of_string (List.nth_exn l 0) in
-  let y = float_of_string (List.nth_exn l 1) in
-  let z = float_of_string (List.nth_exn l 2) in
-  (x,y,z)
-
-let f_quad_from_s_list l =
-  let u = float_of_string (List.nth_exn l 0) in
-  let v = float_of_string (List.nth_exn l 1) in
-  let w = float_of_string (List.nth_exn l 2) in
-  let x = float_of_string (List.nth_exn l 3) in
-  (u,v,w,x)
-
 let vertex_of_words words =
   match List.map words ~f:float_of_string with
   | [] -> failwith "Attempted to parse vertex from empty list"
@@ -167,50 +128,48 @@ let face_indices_of_words words =
   |> Face_indices.of_tuple_list
 
 
+type obj_type = [ `Vertex of Vertex.t
+          | `Texture of Texture_coordinate.t
+          | `Normal of Vertex_normal.t
+          | `Face of Face_indices.t ]
 
-(* TODO: deal with lines being of wrong length, i.e. having too few/too many entries *)
 
-let parse_line line so_far =
-  let (vs,vts,vns,fs) = so_far in
-  (* split the line into words, first *)
+let parse_line line : obj_type =
   let words =
-    (* and deal with any double-spaces (TODO: make this better.) *)
-    List.filter ~f:(fun s -> s <> "") (
-      String.split_on_chars ~on:[' ';'\t'] line) in
-  let rest = List.slice words 1 0 in
-  let result = match List.hd words with
-    | None -> raise (Invalid_argument "Line empty!") (* TODO: handle this better *)
-    | Some "v" -> (vs @ [vertex_of_words rest], vts, vns, fs)
-    | Some "vt" -> (vs, vts @ [texture_coordinate_of_words rest], vns, fs)
-    | Some "vn" -> (vs, vts, vns @ [vertex_normal_of_words rest], fs)
-    | Some "f" -> (vs, vts, vns, fs @ [face_indices_of_words rest])
-    | _ -> so_far
+    String.split_on_chars ~on:[' ';'\t'] line
+    |> List.filter ~f:((<>) "")
   in
-  result
+  let head = List.hd words in
+  let tail = List.tl words in
+  match head, tail with
+  | None, _ | _, None -> failwith "Line empty or only one word"
+  | Some "v", Some t -> `Vertex (vertex_of_words t)
+  | Some "vt", Some t -> `Texture (texture_coordinate_of_words t)
+  | Some "vn", Some t -> `Normal (vertex_normal_of_words t)
+  | Some "f", Some t -> `Face (face_indices_of_words t)
+  | Some _, _ -> failwith "Could not parse line"
 
-(* TODO: make this output an array, and make parse_line reverse the lists instead
-   of appending to the end *)
+
+let build_model obj =
+  let (vs, tcs, vns, fis) =
+    List.fold obj ~init:([],[],[],[]) ~f:(fun (v',tn',vn',fi') x -> match x with
+        | `Vertex x  -> x :: v', tn',      vn',      fi'
+        | `Texture x -> v',      x :: tn', vn',      fi'
+        | `Normal x  -> v',      tn',      x :: vn', fi'
+        | `Face x    -> v',      tn',      vn',      x :: fi')
+  in
+  let vs = List.rev vs in
+  let tcs = List.rev tcs in
+  let vns = List.rev vns in
+  let fis = List.rev fis in
+  List.map fis ~f:(fun f -> Face_vertices.of_indices f vs tcs vns)
+
+
 let parse_model file =
   String.split_lines file
   (* pop out empty lines and comments *)
   |> List.filter ~f:(fun l -> (String.length l) > 0 && (l.[0] <> '#'))
-  |> List.fold ~init:([],[],[],[]) ~f:(fun acc line -> parse_line line acc)
+  |> List.fold ~init:[] ~f:(fun acc line -> (parse_line line) :: acc)
+  |> build_model
 
 
-let show_vertex (x,y,z,w) =
-  "(" ^ (string_of_float x) ^ ", " ^
-  (string_of_float y) ^ ", " ^ (string_of_float z) ^
-  (string_of_float w) ^ ")"
-
-let show_t_vertex (x,y,z) =
-  "(" ^ (string_of_float x) ^ ", " ^
-  (string_of_float y) ^ ", " ^
-  (string_of_float z) ^ ")"
-
-let show_n_vertex (x,y,z) =
-  "(" ^ (string_of_float x) ^ ", " ^
-  (string_of_float y) ^ ", " ^
-  (string_of_float z) ^ ")"
-
-let get_v_indices_from_face face =
-  Array.map face ~f:(fun (v,_,_) -> v)

@@ -1,17 +1,32 @@
-type vertex = (float * float * float * float)
-type texture_vertex = (float * float * float)
-type normal_vertex = (float * float * float)
+module Vertex :
+  sig
+    type t = { x : float; y : float; z : float; w : float; }
+    val of_tuple : float * float * float * float option -> t
+    val to_tuple : t -> float * float * float * float
+  end
 
-type face = (int * int option * int option) array
+module Texture_coordinate :
+  sig
+    type t = { u : float; v : float; w : float; }
+    val of_tuple : float * float * float option -> t
+    val to_tuple : t -> float * float * float
+  end
 
-val parse_model : string ->
-  (vertex list * texture_vertex list * normal_vertex list * face list)
-
-val show_vertex : vertex -> string
-
-val show_t_vertex : texture_vertex -> string
-
-val show_n_vertex : normal_vertex -> string
+module Vertex_normal :
+  sig
+    type t = { x : float; y : float; z : float; }
+    val of_tuple : float * float * float -> t
+    val to_tuple : t -> float * float * float
+  end
 
 
-val get_v_indices_from_face : face -> int array
+module Face_vertices :
+  sig
+    type t = {
+      vertices : Vertex.t list;
+      texture_coordinates : Texture_coordinate.t list;
+      vertex_normals : Vertex_normal.t list;
+    }
+  end
+
+val parse_model : string -> Face_vertices.t list
