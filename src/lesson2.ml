@@ -5,6 +5,7 @@ open Core.Std
    and when world coordinates are used, and make it easier to translate
    between them, using some sort of multiplier and offset *)
 
+(*
 let get_triangle_points p1 p2 p3 =
   let module R = Renderer in
   List.concat
@@ -156,12 +157,14 @@ let get_triangles_list v f =
   (List.map tris ~f:(fun (ar,l) ->
       (List.concat (Array.to_list ar)),l))
 
+   *)
+
 let () =
   let file = In_channel.create "african_head.obj" in
   let input = In_channel.input_all file in
   let model = Model.parse_model input in
-  let (v,t,n,f) = model in
 
+  (*
   let tl = get_triangles_list v f in
 
   let c = Canvas.create_canvas 900 900 in
@@ -172,3 +175,5 @@ let () =
       Canvas.draw_list c t (col,col,col));
 
   Canvas.render_canvas c "test.bmp"
+     *)
+  ()

@@ -1,3 +1,4 @@
+
 module Vertex :
   sig
     type t = { x : float; y : float; z : float; w : float; }
@@ -28,5 +29,7 @@ module Face_vertices :
       vertex_normals : Vertex_normal.t list;
     }
   end
+
+type t = Face_vertices.t list
 
 val parse_model : string -> Face_vertices.t list

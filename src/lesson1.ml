@@ -70,10 +70,16 @@ let get_wireframe_lines v f =
 let () =
   let file = In_channel.create "african_head.obj" in
   let input = In_channel.input_all file in
+
   let model = Model.parse_model input in
-  let (v,t,n,f) = model in
+
+  (* ignore (Vec3.of_tuple (1.,2.,2.)); *)
 
   let c = Canvas.create_canvas 900 900 in
-  let l = Renderer.get_wireframe_lines v f in
+  (* let l = Geometry. *)
+  (* let l = Renderer.get_wireframe_lines v f in *)
+  (*
   Canvas.draw_list c l (255,255,255);
   Canvas.render_canvas c "test.bmp"
+     *)
+  ()

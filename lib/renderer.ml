@@ -1,17 +1,6 @@
 open Core.Std
-(* TODO: Rewrite, use more types, split into more modules if necessary *)
 
-(* TODO: make these records instead; p1.x would be easier than fst p1 *)
-type point_f = (float * float)
-type point_i = (int * int)
-
-type world_coordinates = (float * float * float)
-type screen_coordinates = (int * int)
-
-let point_f_of_i (x,y) = ((float_of_int x),(float_of_int y))
-let point_i_of_f (x,y) = (int_of_float (Float.round x),
-                          int_of_float (Float.round y))
-
+(*
 let get_line_points (x1,y1) (x2,y2) =
   let point_count = (Int.max (Int.abs (y2 - y1)) (Int.abs (x2 - x1)))  in
   let delta = 1.0 /. (float_of_int point_count) in
@@ -61,3 +50,4 @@ let get_wireframe_lines vertices faces =
   |> Array.to_list
   |> List.concat
 
+   *)

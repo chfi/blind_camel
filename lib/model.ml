@@ -85,6 +85,7 @@ module Face_vertices = struct
 
 end
 
+type t = Face_vertices.t list
 
 let vertex_of_words words =
   match List.map words ~f:float_of_string with
