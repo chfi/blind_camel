@@ -128,7 +128,6 @@ let get_filled_triangle_screen_points sp1 sp2 sp3 =
 (** Returns a list of list of points constituting the lines between all
     vertices given. The vertices represent world coordinates. *)
 
-(* TODO: should this function return world coordinates as well? *)
 let get_screen_lines_from_world_vertices s vs =
   List.mapi vs ~f:(fun i v1 ->
       let v2 = if i > 0 then List.nth_exn vs (i-1) else List.last_exn vs in
@@ -138,12 +137,38 @@ let get_screen_lines_from_world_vertices s vs =
       let sp1 = orthogonal_projection s wp1 in
       let sp2 = orthogonal_projection s wp2 in
       get_line_screen_points sp1 sp2)
+  |> List.concat
 
 let get_wireframe_screen_lines s f =
   let open Model.Face_vertices in
   List.map f ~f:(fun face ->
-      get_screen_lines_from_world_vertices s face.vertices
-  )
+      get_screen_lines_from_world_vertices s face.vertices )
+  |> List.concat
 
 
-(* let barycentric_of_cartesian a1 a2 a3 p = *)
+(* a1, a2, a3 are the points of the triangle in cartesian coordinates;
+   p is the point we want to describe in barycentric coordinates in terms
+   of the points a1, a2, a3. *)
+let barycentric_of_cartesian a1 a2 a3 p =
+  (* l1 - l3 are the barycentric weights *)
+  let (x1,y1) = Vec2.to_tuple a1 in
+  let (x2,y2) = Vec2.to_tuple a2 in
+  let (x3,y3) = Vec2.to_tuple a3 in
+  let (x,y) = Vec2.to_tuple p in
+  let l1 = (((y2 -. y3) *. (x -. x3)) +. ((x3 -. x2) *. (y -. y3))) /.
+           (((y2 -. y3) *. (x1 -. x3)) +. ((x3 -. x2) *. (y1 -. y3))) in
+  let l2 = (((y3 -. y1) *. (x -. x3)) +. ((x1 -. x3) *. (y -. y3))) /.
+           (((y2 -. y3) *. (x1 -. x3)) +. ((x3 -. x2) *. (y1 -. y3))) in
+  let l3 = 1. -. l1 -. l2 in
+  Vec3.of_tuple (l1,l2,l3)
+
+
+let cartesian_of_barycentric a1 a2 a3 l =
+  let (l1,l2,l3) = Vec3.to_tuple l in
+  let (x1,y1) = Vec2.to_tuple a1 in
+  let (x2,y2) = Vec2.to_tuple a2 in
+  let (x3,y3) = Vec2.to_tuple a3 in
+
+  let x = (l1 *. x1) +. (l2 *. x2) +. (l3 *. x3) in
+  let y = (l1 *. y1) +. (l2 *. y2) +. (l3 *. y3) in
+  Vec2.of_tuple (x,y)
