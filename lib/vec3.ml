@@ -1,5 +1,16 @@
 open Core.Std
 
+type 'a t = { x : 'a;
+              y : 'a;
+              z : 'a; }
+
+
+let of_tuple (x,y,z) = { x; y; z }
+let to_tuple { x; y; z } = (x,y,z)
+
+let map { x; y; z } ~f = { x = (f x); y = (f y); z = (f z) }
+
+(*
 module Vec3 = struct
   type 'a t = { x : 'a;
                 y : 'a;
@@ -46,9 +57,11 @@ end = struct
   include Vec3
 end
 
-let vec3f_of_vec3i = Vec3.map ~f:float_of_int
+   *)
+
+let vec3f_of_vec3i = map ~f:float_of_int
 
 let vec3i_of_vec3f ?dir =
   let dir = Option.value ~default:`Down dir in
-  Vec3.map ~f:(fun x -> Float.iround_exn ~dir x)
+  map ~f:(fun x -> Float.iround_exn ~dir x)
 

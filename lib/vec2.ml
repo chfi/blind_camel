@@ -1,5 +1,14 @@
 open Core.Std
 
+type 'a t = { x : 'a;
+              y : 'a; }
+
+let of_tuple (x,y) = { x; y }
+let to_tuple { x; y } = (x,y)
+
+let map { x; y } ~f = { x = (f x); y = (f y) }
+
+(*
 module Vec2 = struct
   type 'a t = { x : 'a;
                 y : 'a; }
@@ -44,6 +53,7 @@ end = struct
 
   include Vec2
 end
+   *)
 
 let vec2f_of_vec2i = Vec2.map ~f:float_of_int
 
